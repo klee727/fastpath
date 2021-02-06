@@ -5,13 +5,14 @@ import { ethers } from 'ethers';
 Vue.use(Vuex);
 
 export interface Wallet {
-  isConnected: boolean
-  account: string | null
-  provider: ethers.providers.Web3Provider | null
-  signer: ethers.Signer | null
+  isConnected: boolean;
+  account: string | null;
+  provider: ethers.providers.Web3Provider | null;
+  signer: ethers.Signer | null;
+  balance: ethers.BigNumber | null;
 }
 
-const module: Module<Wallet, any> = {
+const walletModule: Module<Wallet, any> = {
 
   namespaced: true,
 
@@ -19,34 +20,39 @@ const module: Module<Wallet, any> = {
     isConnected: false,
     account: null,
     provider: null,
-    signer: null
+    signer: null,
+    balance: null,
   } as Wallet,
   mutations: {
-    connect(state, accounts) {
+    setWallet(state, account) {
       const provider = new ethers.providers.Web3Provider((window as any).ethereum);
       state.provider = provider;
       state.signer = provider.getSigner();
-      state.account = accounts[0];
+      state.account = account;
       state.isConnected = true;
-
-      console.log(state.account)
+    },
+    setBalance(state, balance) {
+      state.balance = balance;
     }
   },
   actions: {
+    async updateBalance({ state, commit }) {
+      if (!state.isConnected) { return }
+      state.provider.getBalance(state.account).then(balance => {
+        commit('setBalance', balance.toString())
+      })
+    },
     async connectWallet({ state, commit }) {
       if (state.isConnected) {
         return;
       }
       (window as any).ethereum.enable().then((accounts: string[]) => {
-        commit("connect", accounts)
-      })
-    }
+        if (accounts.length > 0) {
+          commit('setWallet', accounts[0]);
+        }
+      });
+    },
   },
-}
+};
 
-
-export default new Vuex.Store({
-  modules: {
-    wallet: module
-  },
-});
+export default walletModule;
